@@ -3,28 +3,37 @@
 import rospy
 from geometry_msgs.msg import Twist
 
-if __name__=="__main__":
-    rospy.init_node('move_forward_node')
+class MoveForwardNode:
+    def __init__(self, duration_sec, speed, rate_hz=10):
+        self.duration_sec = duration_sec
+        self.speed = speed
+        self.rate_hz = rate_hz
 
-    pub = rospy.Publisher('/hsrb/command_velocity', Twist, queue_size=10)
+        rospy.init_node('move_forward_node')
+        self.pub = rospy.Publisher('/hsrb/command_velocity', Twist, queue_size=10)
+        self.rate = rospy.Rate(rate_hz)
+        self.move_cmd = Twist()
+        self.move_cmd.linear.x = speed  # 指定された速度 (メートル/秒)
 
-    move_cmd = Twist()
-    move_cmd.linear.x = 0.1  # 1メートル進むのに必要な速度 (0.1メートル/秒)
+    def run(self):
+        duration = rospy.Duration(self.duration_sec)
+        start_time = rospy.Time.now()
 
-    rate = rospy.Rate(10)  # 10Hzで送信
+        while not rospy.is_shutdown():
+            current_time = rospy.Time.now()
+            if current_time - start_time < duration:
+                self.pub.publish(self.move_cmd)
+            else:
+                # 指定した時間が経過したら停止する
+                self.pub.publish(Twist())
+                break
 
-    # 1メートル進むための時間 (10秒)
-    duration = rospy.Duration(10.0)
+            self.rate.sleep()
 
-    start_time = rospy.Time.now()
+if __name__ == "__main__":
+    # 1メートル進むために必要な時間と速度
+    duration_sec = 10.0  # 秒
+    speed = 0.1  # メートル/秒
 
-    while not rospy.is_shutdown():
-        current_time = rospy.Time.now()
-        if current_time - start_time < duration:
-            pub.publish(move_cmd)
-        else:
-            # 指定した時間が経過したら停止する
-            pub.publish(Twist())
-            break
-
-        rate.sleep()
+    node = MoveForwardNode(duration_sec, speed)
+    node.run()
